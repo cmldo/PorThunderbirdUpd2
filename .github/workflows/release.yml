@@ -84,11 +84,11 @@ jobs:
           if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
           New-Item -ItemType Directory -Path $publishDir
 
-          # Trova la cartella Bin
-          $binDir = Join-Path $PWD "Bin"
+          # Trova la cartella ZipBin
+          $binDir = Join-Path $PWD "ZipBin"
           if (-not (Test-Path $binDir)) { Write-Error "Bin folder not found"; exit 1 }
 
-          # Copia la cartella Bin dentro publish
+          # Copia la cartella ZipBin dentro publish
           Copy-Item -Path $binDir -Destination $publishDir -Recurse -Force
           Write-Host "Copied Bin folder to publish folder"
 
