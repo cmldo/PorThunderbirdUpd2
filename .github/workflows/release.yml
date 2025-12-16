@@ -1,0 +1,114 @@
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag for the release (leave empty to use latest)'
+        required: false
+
+jobs:
+  release:
+    runs-on: windows-2025
+
+    steps:
+      # 1️⃣ Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # 2️⃣ Set up MSBuild
+      - name: Set up MSBuild
+        uses: microsoft/setup-msbuild@v1
+
+      # 3️⃣ Configure Git
+      - name: Configure Git
+        shell: pwsh
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      # 4️⃣ Determine tag
+      - name: Determine tag
+        id: tag
+        shell: pwsh
+        run: |
+          $inputTag = '${{ github.event.inputs.tag }}'.Trim()
+          if (-not $inputTag) {
+              Write-Host "No tag input provided. Using latest Git tag..."
+              $latestTag = git describe --tags --abbrev=0 2>$null
+              if (-not $latestTag) {
+                  Write-Host "No tags found, using 'v0.0.1' as default"
+                  $TAG = "v0.0.1"
+              } else {
+                  $TAG = $latestTag
+              }
+          } else {
+              $TAG = $inputTag
+          }
+          Write-Host "Using tag: $TAG"
+          echo "TAG=$TAG" >> $env:GITHUB_ENV
+
+      # 5️⃣ Check and create tag if missing
+      - name: Check and create tag
+        shell: pwsh
+        run: |
+          $TAG = $env:TAG
+          Write-Host "Checking if tag '$TAG' exists..."
+          $exists = git show-ref --tags $TAG
+          if ($exists) {
+              Write-Host "Tag '$TAG' already exists"
+          } else {
+            Write-Host "Tag '$TAG' does not exist. Creating it..."
+            git tag "$TAG"
+            git push origin "$TAG"
+          }
+
+      # 6️⃣ Build the solution
+      - name: Build project
+        shell: pwsh
+        run: |
+          Write-Host "Searching for solution file..."
+          $solutionFiles = Get-ChildItem -Path $PWD -Recurse -Filter "*.sln"
+          if ($solutionFiles.Count -eq 0) { Write-Error "No solution file found"; exit 1 }
+          $solutionPath = $solutionFiles[0].FullName
+          Write-Host "Building solution: $solutionPath"
+          msbuild "$solutionPath" /p:Configuration=Release
+
+      # 7️⃣ Prepare publish folder
+      - name: Prepare publish folder
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path $PWD "publish"
+          if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
+          New-Item -ItemType Directory -Path $publishDir
+
+          $exePath = Join-Path $PWD "bin\Release\Portable Thunderbird Updater.exe"
+          if (-not (Test-Path $exePath)) { Write-Error "Build output not found"; exit 1 }
+
+          # Copy exe to publish folder
+          Copy-Item -Path $exePath -Destination $publishDir -Force
+          Write-Host "Copied Portable Thunderbird Updater.exe to publish folder"
+
+      # 8️⃣ Zip the exe
+      - name: Zip release
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path $PWD "publish"
+          $zipPath = Join-Path $PWD "Portable_Thunderbird_Updater.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+          Compress-Archive -Path "$publishDir\*" -DestinationPath $zipPath -Force
+          Write-Host "Created zip: $zipPath"
+
+      # 9️⃣ Create GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Release ${{ env.TAG }}
+          files: Portable_Thunderbird_Updater.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
