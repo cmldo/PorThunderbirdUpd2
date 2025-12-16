@@ -93,7 +93,7 @@ jobs:
           Write-Host "Copied Bin folder to publish folder"
 
           # Trova dinamicamente l'exe
-          $exePath = Get-ChildItem -Path $binDir -Recurse -Filter "Portable Thunderbird Updater.exe" | Select-Object -First 1
+          $exePath = Get-ChildItem -Path $PWD -Recurse -Filter "Portable Thunderbird Updater.exe" | Select-Object -First 1
           if (-not $exePath) { Write-Error "Executable not found in Bin folder"; exit 1 }
 
           # Copia l'exe al livello principale di publish
