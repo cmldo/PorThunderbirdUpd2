@@ -91,6 +91,13 @@ jobs:
           Copy-Item -Path $exePath -Destination $publishDir -Force
           Write-Host "Copied Portable Thunderbird Updater.exe to publish folder"
 
+          # Copia tutta la cartella Bin nel publish
+          $binDir = Join-Path $PWD "Bin"
+          if (-not (Test-Path $binDir)) { Write-Error "Bin folder not found"; exit 1 }          
+          Copy-Item -Path "$binDir\*" -Destination $publishDir -Recurse -Force
+          Write-Host "Copied Bin folder to publish folder"
+
+
       # 8️⃣ Zip the exe
       - name: Zip release
         shell: pwsh
