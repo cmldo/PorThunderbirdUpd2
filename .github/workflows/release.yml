@@ -9,7 +9,7 @@ on:
 
 jobs:
   release:
-    runs-on: windows-latest
+    runs-on: windows-2025
 
     steps:
       # 1️⃣ Checkout repository
@@ -48,7 +48,7 @@ jobs:
               $TAG = $inputTag
           }
           Write-Host "Using tag: $TAG"
-          Write-Output "TAG=$TAG" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "TAG=$TAG" >> $env:GITHUB_ENV
 
       # 5️⃣ Check and create tag if missing
       - name: Check and create tag
@@ -56,14 +56,13 @@ jobs:
         run: |
           $TAG = $env:TAG
           Write-Host "Checking if tag '$TAG' exists..."
-          git fetch --tags
-          $exists = git show-ref --tags -q $TAG
-          if ($LASTEXITCODE -eq 0) {
+          $exists = git show-ref --tags $TAG
+          if ($exists) {
               Write-Host "Tag '$TAG' already exists"
           } else {
-              Write-Host "Tag '$TAG' does not exist. Creating it..."
-              git tag "$TAG"
-              git push origin "$TAG"
+            Write-Host "Tag '$TAG' does not exist. Creating it..."
+            git tag "$TAG"
+            git push origin "$TAG"
           }
 
       # 6️⃣ Build the solution
@@ -92,21 +91,19 @@ jobs:
           Copy-Item -Path $binDir -Destination $publishDir -Recurse -Force
           Write-Host "Copied Bin folder to publish folder"
 
-          # Copia l'exe al livello principale di publish
-          $exePath = Join-Path $binDir "Portable Thunderbird Updater.exe"
-          if (-not (Test-Path $exePath)) { Write-Error "Executable not found"; exit 1 }
-          Copy-Item -Path $exePath -Destination $publishDir -Force
-          Write-Host "Copied Portable Thunderbird Updater.exe to publish folder"
-
-      # 8️⃣ Zip the publish folder
+      # 8️⃣ Zip Bin folder
       - name: Zip release
         shell: pwsh
         run: |
           $publishDir = Join-Path $PWD "publish"
+          $binDir = Join-Path $publishDir "Bin"
           $zipPath = Join-Path $PWD "Portable_Thunderbird_Updater.zip"
           if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-          Compress-Archive -Path "$publishDir\*" -DestinationPath $zipPath -Force
-          Write-Host "Created zip with structure: \Bin + Portable Thunderbird Updater.exe"
+
+          if (-not (Test-Path $binDir)) { Write-Error "Bin folder not found in publish"; exit 1 }
+
+          Compress-Archive -Path "$binDir\*" -DestinationPath $zipPath -Force
+          Write-Host "Created zip including only Bin folder: $zipPath"
 
       # 9️⃣ Create GitHub Release
       - name: Create GitHub Release
