@@ -76,39 +76,31 @@ jobs:
           Write-Host "Building solution: $solutionPath"
           msbuild "$solutionPath" /p:Configuration=Release
 
-      # 7️⃣ Prepare publish folder (MODIFICA)
+      # 7️⃣ Prepare publish folder
       - name: Prepare publish folder
         shell: pwsh
         run: |
           $publishDir = Join-Path $PWD "publish"
           if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
           New-Item -ItemType Directory -Path $publishDir
-
+      
           $binDir = Join-Path $PWD "Bin"
           if (-not (Test-Path $binDir)) { Write-Error "Bin folder not found"; exit 1 }
-
-          # ⚡ Copia tutta la cartella Bin dentro publish
-          Copy-Item -Path $binDir -Destination $publishDir -Recurse -Force
+      
+          # Copia tutta la cartella Bin nel publish
+          Copy-Item -Path "$binDir\*" -Destination $publishDir -Recurse -Force
           Write-Host "Copied Bin folder to publish folder"
-
-          # ⚡ Copia l'exe al livello principale di publish
-          $exePath = Join-Path $binDir "Portable Thunderbird Updater.exe"
-          if (-not (Test-Path $exePath)) { Write-Error "Executable not found"; exit 1 }
-          Copy-Item -Path $exePath -Destination $publishDir -Force
-          Write-Host "Copied Portable Thunderbird Updater.exe to publish folder"
-
-      # 8️⃣ Zip release (MODIFICA)
+      
+      # 8️⃣ Zip the publish folder
       - name: Zip release
         shell: pwsh
         run: |
           $publishDir = Join-Path $PWD "publish"
           $zipPath = Join-Path $PWD "Portable_Thunderbird_Updater.zip"
           if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-
-          # ⚡ Zippa TUTTO il contenuto di publish (Bin + exe)
           Compress-Archive -Path "$publishDir\*" -DestinationPath $zipPath -Force
-          Write-Host "Created zip with structure: \Bin + Portable Thunderbird Updater.exe"
-
+          Write-Host "Created zip including Bin folder: $zipPath"
+   
       # 9️⃣ Create GitHub Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
