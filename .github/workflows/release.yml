@@ -76,7 +76,7 @@ jobs:
           Write-Host "Building solution: $solutionPath"
           msbuild "$solutionPath" /p:Configuration=Release
 
-      # 7️⃣ Prepare publish folder
+      # 7️⃣ Prepare publish folder (aggiornato)
       - name: Prepare publish folder
         shell: pwsh
         run: |
@@ -84,29 +84,33 @@ jobs:
           if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
           New-Item -ItemType Directory -Path $publishDir
 
-          $exePath = Join-Path $PWD "bin\Release\Portable Thunderbird Updater.exe"
-          if (-not (Test-Path $exePath)) { Write-Error "Build output not found"; exit 1 }
-
-          # Copy exe to publish folder
-          Copy-Item -Path $exePath -Destination $publishDir -Force
-          Write-Host "Copied Portable Thunderbird Updater.exe to publish folder"
-
-          # Copia tutta la cartella Bin nel publish
+          # Trova la cartella Bin
           $binDir = Join-Path $PWD "Bin"
-          if (-not (Test-Path $binDir)) { Write-Error "Bin folder not found"; exit 1 }          
-          Copy-Item -Path "$binDir\*" -Destination $publishDir -Recurse -Force
+          if (-not (Test-Path $binDir)) { Write-Error "Bin folder not found"; exit 1 }
+
+          # Copia la cartella Bin dentro publish
+          Copy-Item -Path $binDir -Destination $publishDir -Recurse -Force
           Write-Host "Copied Bin folder to publish folder"
 
+          # Trova dinamicamente l'exe
+          $exePath = Get-ChildItem -Path $binDir -Recurse -Filter "Portable Thunderbird Updater.exe" | Select-Object -First 1
+          if (-not $exePath) { Write-Error "Executable not found in Bin folder"; exit 1 }
 
-      # 8️⃣ Zip the exe
+          # Copia l'exe al livello principale di publish
+          Copy-Item -Path $exePath.FullName -Destination $publishDir -Force
+          Write-Host "Copied Portable Thunderbird Updater.exe to publish folder"
+
+      # 8️⃣ Zip release (aggiornato)
       - name: Zip release
         shell: pwsh
         run: |
           $publishDir = Join-Path $PWD "publish"
           $zipPath = Join-Path $PWD "Portable_Thunderbird_Updater.zip"
           if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+
+          # Zippa tutto il contenuto di publish (Bin + exe)
           Compress-Archive -Path "$publishDir\*" -DestinationPath $zipPath -Force
-          Write-Host "Created zip: $zipPath"
+          Write-Host "Created zip with structure: \Bin + Portable Thunderbird Updater.exe"
 
       # 9️⃣ Create GitHub Release
       - name: Create GitHub Release
