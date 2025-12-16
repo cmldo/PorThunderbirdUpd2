@@ -76,7 +76,7 @@ jobs:
           Write-Host "Building solution: $solutionPath"
           msbuild "$solutionPath" /p:Configuration=Release
 
-      # 7️⃣ Prepare publish folder (aggiornato)
+      # 7️⃣ Prepare publish folder
       - name: Prepare publish folder
         shell: pwsh
         run: |
@@ -100,7 +100,7 @@ jobs:
           Copy-Item -Path $exePath.FullName -Destination $publishDir -Force
           Write-Host "Copied Portable Thunderbird Updater.exe to publish folder"
 
-      # 8️⃣ Zip release (aggiornato)
+      # 8️⃣ Zip release
       - name: Zip release
         shell: pwsh
         run: |
@@ -121,3 +121,15 @@ jobs:
           files: Portable_Thunderbird_Updater.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 🔹 Cleanup publish folder
+      - name: Clean up publish folder
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path $PWD "publish"
+          if (Test-Path $publishDir) {
+              Remove-Item $publishDir -Recurse -Force
+              Write-Host "Cleaned up publish folder"
+          } else {
+              Write-Host "No publish folder to clean"
+          }
