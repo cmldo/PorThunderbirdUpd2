@@ -86,10 +86,12 @@ jobs:
 
           # Trova la cartella ZipBin
           $binDir = Join-Path $PWD "ZipBin"
+          $binDirDest = Join-Path $publishDir "Bin"
           if (-not (Test-Path $binDir)) { Write-Error "Bin folder not found"; exit 1 }
 
           # Copia la cartella ZipBin dentro publish
-          Copy-Item -Path $binDir -Destination $publishDir -Recurse -Force
+          #Copy-Item -Path $binDir -Destination $publishDir -Recurse -Force
+          Copy-Item -Path "$binDir\*" -Destination $binDirDest -Recurse -Force
           Write-Host "Copied Bin folder to publish folder"
 
           # Trova dinamicamente l'exe
